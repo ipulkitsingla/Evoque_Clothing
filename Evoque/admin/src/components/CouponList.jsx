@@ -26,30 +26,55 @@ const CouponList = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const checkAndSetToken = () => {
     const token = localStorage.getItem('adminToken');
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    } else {
+    if (!token) {
+      console.log('No token found, redirecting to login');
       navigate('/login');
-      return;
+      return false;
     }
-    fetchCoupons();
+    // Set token in axios headers
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    return true;
+  };
+
+  useEffect(() => {
+    if (checkAndSetToken()) {
+      fetchCoupons();
+    }
   }, [navigate]);
 
   const fetchCoupons = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/coupons/admin`);
-      setCoupons(response.data.coupons || []);
       setError(null);
+
+      // Double check token before request
+      if (!checkAndSetToken()) {
+        return;
+      }
+
+      console.log('Fetching coupons from:', `${API_URL}/coupons/admin`);
+      console.log('Auth header:', axios.defaults.headers.common['Authorization']);
+
+      const response = await axios.get(`${API_URL}/coupons/admin`);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to fetch coupons');
+      }
+
+      setCoupons(response.data.coupons || []);
     } catch (error) {
       console.error('Error fetching coupons:', error);
+      
       if (error.response?.status === 401) {
+        console.log('Token expired or invalid, clearing and redirecting');
+        localStorage.removeItem('adminToken');
+        delete axios.defaults.headers.common['Authorization'];
         setError('Your session has expired. Please log in again.');
         navigate('/login');
       } else {
-        setError('Failed to load coupons. Please try again later.');
+        setError(error.message || 'Failed to load coupons. Please try again later.');
       }
       setCoupons([]);
     } finally {
@@ -58,18 +83,30 @@ const CouponList = () => {
   };
 
   const handleDelete = async (id) => {
+    if (!checkAndSetToken()) {
+      return;
+    }
+
     if (window.confirm('Are you sure you want to delete this coupon?')) {
       try {
-        await axios.delete(`${API_URL}/coupons/${id}`);
+        const response = await axios.delete(`${API_URL}/coupons/${id}`);
+        
+        if (!response.data.success) {
+          throw new Error(response.data.message || 'Failed to delete coupon');
+        }
+
         fetchCoupons();
         setError(null);
       } catch (error) {
         console.error('Error deleting coupon:', error);
+        
         if (error.response?.status === 401) {
+          localStorage.removeItem('adminToken');
+          delete axios.defaults.headers.common['Authorization'];
           setError('Your session has expired. Please log in again.');
           navigate('/login');
         } else {
-          setError('Failed to delete coupon. Please try again later.');
+          setError(error.message || 'Failed to delete coupon. Please try again later.');
         }
       }
     }
@@ -110,7 +147,11 @@ const CouponList = () => {
         <Button
           variant="contained"
           color="primary"
-          onClick={() => navigate('/add-coupon')}
+          onClick={() => {
+            if (checkAndSetToken()) {
+              navigate('/add-coupon');
+            }
+          }}
         >
           Add New Coupon
         </Button>
@@ -157,7 +198,11 @@ const CouponList = () => {
                   </TableCell>
                   <TableCell>
                     <IconButton
-                      onClick={() => navigate(`/edit-coupon/${coupon._id}`)}
+                      onClick={() => {
+                        if (checkAndSetToken()) {
+                          navigate(`/edit-coupon/${coupon._id}`);
+                        }
+                      }}
                       color="primary"
                       size="small"
                     >

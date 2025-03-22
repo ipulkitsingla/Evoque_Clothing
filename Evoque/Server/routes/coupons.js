@@ -3,22 +3,36 @@ const router = express.Router();
 const { Coupon } = require('../models/coupon');
 const authMiddleware = require('../middleware/auth');
 const adminMiddleware = require('../middleware/admin');
+const mongoose = require('mongoose');
 
 // Admin Routes
 
 // Get all coupons (admin)
 router.get('/admin', [authMiddleware, adminMiddleware], async (req, res) => {
     try {
+        console.log('GET /admin - Fetching all coupons');
+        console.log('MongoDB Connection State:', mongoose.connection.readyState);
+        
+        // Verify database connection
+        if (mongoose.connection.readyState !== 1) {
+            throw new Error('Database connection is not ready');
+        }
+
         const coupons = await Coupon.find().sort({ createdAt: -1 });
+        console.log(`Found ${coupons.length} coupons`);
+        
         res.json({
             success: true,
             coupons
         });
     } catch (error) {
         console.error('Error in GET /admin:', error);
+        console.error('Stack trace:', error.stack);
         res.status(500).json({
             success: false,
-            message: error.message || 'Internal server error'
+            message: 'Failed to fetch coupons',
+            error: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 });
@@ -26,6 +40,15 @@ router.get('/admin', [authMiddleware, adminMiddleware], async (req, res) => {
 // Get single coupon by ID
 router.get('/:id', [authMiddleware, adminMiddleware], async (req, res) => {
     try {
+        console.log(`GET /:id - Fetching coupon with ID: ${req.params.id}`);
+        
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid coupon ID format'
+            });
+        }
+
         const coupon = await Coupon.findById(req.params.id);
         if (!coupon) {
             return res.status(404).json({
@@ -38,10 +61,11 @@ router.get('/:id', [authMiddleware, adminMiddleware], async (req, res) => {
             coupon
         });
     } catch (error) {
-        console.error('Error in GET /:id:', error);
+        console.error(`Error in GET /:id:`, error);
         res.status(500).json({
             success: false,
-            message: error.message || 'Internal server error'
+            message: 'Failed to fetch coupon',
+            error: error.message
         });
     }
 });
@@ -49,8 +73,10 @@ router.get('/:id', [authMiddleware, adminMiddleware], async (req, res) => {
 // Create new coupon
 router.post('/', [authMiddleware, adminMiddleware], async (req, res) => {
     try {
+        console.log('POST / - Creating new coupon:', req.body);
         const coupon = new Coupon(req.body);
         await coupon.save();
+        console.log('Coupon created successfully:', coupon._id);
         res.status(201).json({
             success: true,
             coupon
@@ -59,7 +85,8 @@ router.post('/', [authMiddleware, adminMiddleware], async (req, res) => {
         console.error('Error in POST /:', error);
         res.status(400).json({
             success: false,
-            message: error.message || 'Failed to create coupon'
+            message: 'Failed to create coupon',
+            error: error.message
         });
     }
 });
@@ -67,6 +94,15 @@ router.post('/', [authMiddleware, adminMiddleware], async (req, res) => {
 // Update coupon
 router.put('/:id', [authMiddleware, adminMiddleware], async (req, res) => {
     try {
+        console.log(`PUT /:id - Updating coupon with ID: ${req.params.id}`);
+        
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid coupon ID format'
+            });
+        }
+
         const coupon = await Coupon.findByIdAndUpdate(
             req.params.id,
             { $set: req.body },
@@ -78,6 +114,7 @@ router.put('/:id', [authMiddleware, adminMiddleware], async (req, res) => {
                 message: 'Coupon not found'
             });
         }
+        console.log('Coupon updated successfully');
         res.json({
             success: true,
             coupon
@@ -86,7 +123,8 @@ router.put('/:id', [authMiddleware, adminMiddleware], async (req, res) => {
         console.error('Error in PUT /:id:', error);
         res.status(400).json({
             success: false,
-            message: error.message || 'Failed to update coupon'
+            message: 'Failed to update coupon',
+            error: error.message
         });
     }
 });
@@ -94,6 +132,15 @@ router.put('/:id', [authMiddleware, adminMiddleware], async (req, res) => {
 // Delete coupon
 router.delete('/:id', [authMiddleware, adminMiddleware], async (req, res) => {
     try {
+        console.log(`DELETE /:id - Deleting coupon with ID: ${req.params.id}`);
+        
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid coupon ID format'
+            });
+        }
+
         const coupon = await Coupon.findByIdAndDelete(req.params.id);
         if (!coupon) {
             return res.status(404).json({
@@ -101,6 +148,7 @@ router.delete('/:id', [authMiddleware, adminMiddleware], async (req, res) => {
                 message: 'Coupon not found'
             });
         }
+        console.log('Coupon deleted successfully');
         res.json({
             success: true,
             message: 'Coupon deleted successfully'
@@ -109,7 +157,8 @@ router.delete('/:id', [authMiddleware, adminMiddleware], async (req, res) => {
         console.error('Error in DELETE /:id:', error);
         res.status(500).json({
             success: false,
-            message: error.message || 'Failed to delete coupon'
+            message: 'Failed to delete coupon',
+            error: error.message
         });
     }
 });
@@ -119,6 +168,7 @@ router.delete('/:id', [authMiddleware, adminMiddleware], async (req, res) => {
 // Validate coupon
 router.post('/validate', authMiddleware, async (req, res) => {
     try {
+        console.log('POST /validate - Validating coupon:', req.body.code);
         const { code, cartTotal } = req.body;
         
         const coupon = await Coupon.findOne({
@@ -162,6 +212,7 @@ router.post('/validate', authMiddleware, async (req, res) => {
             discount = coupon.discountValue;
         }
 
+        console.log('Coupon validated successfully');
         res.json({
             success: true,
             coupon: {
@@ -173,7 +224,8 @@ router.post('/validate', authMiddleware, async (req, res) => {
         console.error('Error in POST /validate:', error);
         res.status(500).json({
             success: false,
-            message: error.message || 'Failed to validate coupon'
+            message: 'Failed to validate coupon',
+            error: error.message
         });
     }
 });
@@ -181,6 +233,7 @@ router.post('/validate', authMiddleware, async (req, res) => {
 // Apply coupon (increment usage count)
 router.post('/apply', authMiddleware, async (req, res) => {
     try {
+        console.log('POST /apply - Applying coupon:', req.body.code);
         const { code } = req.body;
         
         const coupon = await Coupon.findOneAndUpdate(
@@ -196,6 +249,7 @@ router.post('/apply', authMiddleware, async (req, res) => {
             });
         }
 
+        console.log('Coupon applied successfully');
         res.json({
             success: true,
             message: 'Coupon applied successfully'
@@ -204,7 +258,8 @@ router.post('/apply', authMiddleware, async (req, res) => {
         console.error('Error in POST /apply:', error);
         res.status(500).json({
             success: false,
-            message: error.message || 'Failed to apply coupon'
+            message: 'Failed to apply coupon',
+            error: error.message
         });
     }
 });

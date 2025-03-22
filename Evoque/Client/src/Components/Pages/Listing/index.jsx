@@ -12,6 +12,7 @@ import Header from "../../Header";
 import axios from "axios";
 import Pagination from '@mui/material/Pagination';
 import Stack from '@mui/material/Stack';
+import { API_URL } from '../../../config/api';
 
 const Listing = () => {
     const { id: categoryId } = useParams();
@@ -41,7 +42,7 @@ const Listing = () => {
 
     const fetchCategoryName = async () => {
         try {
-            const response = await axios.get(`http://localhost:3000/api/category/${categoryId}`);
+            const response = await axios.get(`${API_URL}/category/${categoryId}`);
             if (response.data && response.data.success) {
                 setCategoryName(response.data.category.name);
             } else if (response.data && response.data.name) {
@@ -55,7 +56,7 @@ const Listing = () => {
     const fetchProducts = async () => {
         try {
             setLoading(true);
-            const response = await axios.get('http://localhost:3000/api/products');
+            const response = await axios.get(`${API_URL}/products`);
             if (Array.isArray(response.data)) {
                 setProducts(response.data);
             } else {

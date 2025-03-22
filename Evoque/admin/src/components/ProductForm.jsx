@@ -19,6 +19,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
+import { API_URL } from '../config/api';
 
 const ProductForm = () => {
   const { id } = useParams();
@@ -49,7 +50,7 @@ const ProductForm = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/category', {
+      const response = await axios.get(`${API_URL}/category`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('adminToken')}`
         }
@@ -66,7 +67,7 @@ const ProductForm = () => {
 
   const fetchProduct = async () => {
     try {
-      const response = await axios.get(`http://localhost:3000/api/products/${id}`, {
+      const response = await axios.get(`${API_URL}/products/${id}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('adminToken')}`
         }
@@ -146,8 +147,8 @@ const ProductForm = () => {
     try {
       const method = id ? 'put' : 'post';
       const url = id 
-        ? `http://localhost:3000/api/products/${id}`
-        : 'http://localhost:3000/api/products';
+        ? `${API_URL}/products/${id}`
+        : `${API_URL}/products`;
 
       await axios[method](url, formData, {
         headers: {

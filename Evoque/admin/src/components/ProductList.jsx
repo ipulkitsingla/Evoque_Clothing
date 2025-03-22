@@ -27,6 +27,7 @@ import AddIcon from '@mui/icons-material/Add';
 import StarIcon from '@mui/icons-material/Star';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_URL } from '../config/api';
 
 const ProductList = () => {
   const [products, setProducts] = useState([]);
@@ -40,7 +41,7 @@ const ProductList = () => {
 
   const fetchProducts = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/products', {
+      const response = await axios.get(`${API_URL}/products`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('adminToken')}`
         }
@@ -58,7 +59,7 @@ const ProductList = () => {
   const handleDelete = async (productId) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       try {
-        await axios.delete(`http://localhost:3000/api/products/${productId}`, {
+        await axios.delete(`${API_URL}/products/${productId}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('adminToken')}`
           }

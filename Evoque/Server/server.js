@@ -4,6 +4,7 @@ const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const { corsMiddleware, ensureCorsHeaders } = require("./middleware/cors");
 require("dotenv/config")
+const { ping } = require("./utils/keepAlive");
 
 // Apply CORS middleware before routes
 app.use(corsMiddleware);
@@ -36,9 +37,15 @@ const ordersRoute = require("./routes/orders");
 const couponsRoute = require("./routes/coupons");
 const authMiddleware = require("./middleware/auth");
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({ status: 'ok', time: new Date().toISOString() });
+// Enhanced health check endpoint
+app.get('/api/health', (req, res) => {
+    res.json({ 
+        status: 'ok', 
+        time: new Date().toISOString(),
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        env: process.env.NODE_ENV
+    });
 });
 
 // Public routes for GET operations
@@ -108,9 +115,28 @@ mongoose.connect(process.env.CONNECTION_STRING, {
 .then(() => {
     console.log("Database Connected Successfully!");
     const port = process.env.PORT || 3000;
-    app.listen(port, () => {
+    const server = app.listen(port, () => {
         console.log(`Server running at http://localhost:${port}`);
         console.log('CORS enabled for origins:', corsMiddleware.origin);
+        console.log('Environment:', process.env.NODE_ENV);
+        
+        // Start the keep-alive ping
+        if (process.env.NODE_ENV === 'production') {
+            ping();
+            console.log('Keep-alive ping service started');
+        }
+    });
+
+    // Handle server shutdown gracefully
+    process.on('SIGTERM', () => {
+        console.log('SIGTERM received. Shutting down gracefully...');
+        server.close(() => {
+            console.log('Server closed');
+            mongoose.connection.close(false, () => {
+                console.log('MongoDB connection closed');
+                process.exit(0);
+            });
+        });
     });
 })
 .catch((err) => {

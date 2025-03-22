@@ -34,6 +34,7 @@ import {
   LocalMall,
 } from '@mui/icons-material';
 import axios from 'axios';
+import { API_URL } from '../../../config/api';
 
 const Dashboard = () => {
   const [products, setProducts] = useState([]);
@@ -80,9 +81,9 @@ const Dashboard = () => {
 
       // Fetch all data in parallel
       const [ordersResponse, productsResponse, categoriesResponse] = await Promise.all([
-        axios.get('http://localhost:3000/api/orders', { headers }),
-        axios.get('http://localhost:3000/api/products', { headers }),
-        axios.get('http://localhost:3000/api/category', { headers })
+        axios.get(`${API_URL}/orders`, { headers }),
+        axios.get(`${API_URL}/products`, { headers }),
+        axios.get(`${API_URL}/category`, { headers })
       ]);
 
       // Check if products exist
@@ -140,7 +141,7 @@ const Dashboard = () => {
 
   const handleDelete = async (id) => {
     try {
-      const response = await axios.delete(`http://localhost:3000/api/products/${id}`, {
+      const response = await axios.delete(`${API_URL}/products/${id}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('adminToken')}`,
         },

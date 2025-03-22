@@ -6,6 +6,7 @@ import { IoClose } from "react-icons/io5";
 import Button from '@mui/material/Button';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_URL } from '../../config/api';
 
 const Sidebar = ({ onClose, priceRange, onPriceRangeChange, selectedCategories = [], onCategoryChange }) => {
     const [categories, setCategories] = useState([]);
@@ -16,7 +17,7 @@ const Sidebar = ({ onClose, priceRange, onPriceRangeChange, selectedCategories =
 
     const fetchCategories = async () => {
         try {
-            const response = await axios.get('http://localhost:3000/api/category');
+            const response = await axios.get(`${API_URL}/category`);
             if (response.data && response.data.categories) {
                 setCategories(response.data.categories);
             } else if (response.data && Array.isArray(response.data)) {

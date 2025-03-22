@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import axios from 'axios';
+import { API_URL } from '../../config/api';
 
 import 'swiper/css';
 import 'swiper/css/navigation';
@@ -20,7 +21,7 @@ const HomeTrending = () => {
 
     const fetchProducts = async () => {
         try {
-            const response = await axios.get('http://localhost:3000/api/products');
+            const response = await axios.get(`${API_URL}/products`);
             setProducts(response.data);
         } catch (error) {
             console.error('Error fetching products:', error);

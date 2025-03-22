@@ -387,7 +387,7 @@ const Cart = () => {
             }
 
             // First validate the coupon
-            const response = await fetch('http://localhost:3000/api/coupons/validate', {
+            const response = await fetch(`${API_URL}/coupons/validate`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -408,7 +408,7 @@ const Cart = () => {
             }
 
             // If validation successful, apply the coupon
-            const applyResponse = await fetch('http://localhost:3000/api/coupons/apply', {
+            const applyResponse = await fetch(`${API_URL}/coupons/apply`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

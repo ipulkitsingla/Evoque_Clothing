@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_URL } from '../../config/api';
 
 import 'swiper/css';
 import 'swiper/css/navigation';
@@ -20,7 +21,7 @@ const HomeCategory = () => {
 
     const fetchCategories = async () => {
         try {
-            const response = await axios.get('http://localhost:3000/api/category');
+            const response = await axios.get(`${API_URL}/category`);
             if (response.data && response.data.categories) {
                 setCategories(response.data.categories);
             } else if (response.data && Array.isArray(response.data)) {

@@ -9,19 +9,23 @@ require("dotenv/config")
 const corsOptions = {
     origin: function (origin, callback) {
         const allowedOrigins = [
+            // Development URLs
             'http://localhost:5173',
             'http://localhost:3000',
             'http://127.0.0.1:5173',
             'http://127.0.0.1:3000',
+            // Production URLs
             'https://evoque-clothing.vercel.app',
-            'https://evoque-clothing-git-main-ipulkitsingla.vercel.app',
-            'https://evoque-clothing-ipulkitsingla.vercel.app'
+            'https://evoque-clothing-admin.vercel.app',
+            // Server URL
+            'https://evoque-clothing-server.vercel.app'
         ];
         
         if (!origin || allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
-            callback(new Error('Not allowed by CORS'));
+            console.warn(`Origin ${origin} not allowed by CORS`);
+            callback(new Error(`Origin ${origin} not allowed by CORS`));
         }
     },
     credentials: true,

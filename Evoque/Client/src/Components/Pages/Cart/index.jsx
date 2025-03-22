@@ -18,6 +18,7 @@ import Header from "../../Header";
 import Footer from "../../Footer";
 import { useState, useEffect } from 'react';
 import { FaCheckCircle } from "react-icons/fa";
+import { API_URL } from '../../../config/api';
 
 const Cart = () => {
     const [cartItems, setCartItems] = useState([]);
@@ -291,9 +292,7 @@ const Cart = () => {
             // Place order
             let response;
             try {
-                const apiUrl = 'http://localhost:3000/api/orders';
-                
-                response = await fetch(apiUrl, {
+                const response = await fetch(`${API_URL}/orders`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

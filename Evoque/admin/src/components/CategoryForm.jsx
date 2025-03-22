@@ -12,6 +12,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
+import { API_URL } from '../config/api';
 
 const CategoryForm = () => {
   const { id } = useParams();
@@ -31,7 +32,7 @@ const CategoryForm = () => {
 
   const fetchCategory = async () => {
     try {
-      const response = await axios.get(`http://localhost:3000/api/category/${id}`, {
+      const response = await axios.get(`${API_URL}/category/${id}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('adminToken')}`
         }
@@ -87,7 +88,7 @@ const CategoryForm = () => {
 
     try {
       // Check if category with same name exists
-      const existingCategories = await axios.get('http://localhost:3000/api/category', {
+      const existingCategories = await axios.get(`${API_URL}/category`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('adminToken')}`
         }
@@ -99,7 +100,7 @@ const CategoryForm = () => {
 
       const categoryExists = categories.some(
         category => category.name.toLowerCase() === formData.name.toLowerCase() && 
-        (!id || category._id !== id) // Allow same name if updating the same category
+        (!id || category._id !== id)
       );
 
       if (categoryExists) {
@@ -110,8 +111,8 @@ const CategoryForm = () => {
 
       const method = id ? 'put' : 'post';
       const url = id 
-        ? `http://localhost:3000/api/category/${id}`
-        : 'http://localhost:3000/api/category/create';
+        ? `${API_URL}/category/${id}`
+        : `${API_URL}/category/create`;
 
       console.log('Submitting category data:', formData);
       const response = await axios[method](url, formData, {

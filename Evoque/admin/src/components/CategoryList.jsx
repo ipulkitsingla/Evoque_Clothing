@@ -17,6 +17,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_URL } from '../config/api';
 
 const CategoryList = () => {
   const [categories, setCategories] = useState([]);
@@ -28,7 +29,7 @@ const CategoryList = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/category', {
+      const response = await axios.get(`${API_URL}/category`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('adminToken')}`
         }
@@ -51,7 +52,7 @@ const CategoryList = () => {
   const handleDelete = async (categoryId) => {
     if (window.confirm('Are you sure you want to delete this category?')) {
       try {
-        await axios.delete(`http://localhost:3000/api/category/${categoryId}`, {
+        await axios.delete(`${API_URL}/category/${categoryId}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('adminToken')}`
           }

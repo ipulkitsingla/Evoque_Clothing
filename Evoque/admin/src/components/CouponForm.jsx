@@ -14,9 +14,7 @@ import {
 } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-
-// Set base URL for all axios requests
-axios.defaults.baseURL = 'http://localhost:3000';
+import { API_URL } from '../config/api';
 
 const CouponForm = () => {
   const { id } = useParams();
@@ -49,7 +47,7 @@ const CouponForm = () => {
 
   const fetchCoupon = async () => {
     try {
-      const response = await axios.get(`/api/coupons/${id}`);
+      const response = await axios.get(`${API_URL}/coupons/${id}`);
       const coupon = response.data.coupon;
       setFormData({
         ...coupon,
@@ -120,9 +118,9 @@ const CouponForm = () => {
       };
 
       if (id) {
-        await axios.put(`/api/coupons/${id}`, dataToSubmit);
+        await axios.put(`${API_URL}/coupons/${id}`, dataToSubmit);
       } else {
-        await axios.post('/api/coupons', dataToSubmit);
+        await axios.post(`${API_URL}/coupons`, dataToSubmit);
       }
       navigate('/coupons');
     } catch (error) {

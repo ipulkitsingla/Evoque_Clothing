@@ -6,6 +6,28 @@ const adminMiddleware = require('../middleware/admin');
 
 // Admin Routes
 
+// Get single coupon by ID
+router.get('/:id', [authMiddleware, adminMiddleware], async (req, res) => {
+    try {
+        const coupon = await Coupon.findById(req.params.id);
+        if (!coupon) {
+            return res.status(404).json({
+                success: false,
+                message: 'Coupon not found'
+            });
+        }
+        res.json({
+            success: true,
+            coupon
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
 // Create new coupon
 router.post('/', [authMiddleware, adminMiddleware], async (req, res) => {
     try {

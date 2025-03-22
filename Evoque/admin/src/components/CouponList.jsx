@@ -18,9 +18,7 @@ import {
 import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-
-// Set base URL for all axios requests
-axios.defaults.baseURL = 'http://localhost:3000';
+import { API_URL } from '../config/api';
 
 const CouponList = () => {
   const [coupons, setCoupons] = useState([]);
@@ -42,7 +40,7 @@ const CouponList = () => {
   const fetchCoupons = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/coupons/admin');
+      const response = await axios.get(`${API_URL}/coupons/admin`);
       setCoupons(response.data.coupons || []);
       setError(null);
     } catch (error) {
@@ -62,7 +60,7 @@ const CouponList = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this coupon?')) {
       try {
-        await axios.delete(`/api/coupons/${id}`);
+        await axios.delete(`${API_URL}/coupons/${id}`);
         fetchCoupons();
         setError(null);
       } catch (error) {

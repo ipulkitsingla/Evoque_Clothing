@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const { corsMiddleware, ensureCorsHeaders } = require("./middleware/cors");
 require("dotenv/config")
 const { ping } = require("./utils/keepAlive");
+const path = require("path");
 
 // MongoDB Debug
 mongoose.set('debug', true);
@@ -128,6 +129,28 @@ app.use('/api/category', authMiddleware, categoryRoute);
 app.use('/api/products', authMiddleware, productRoute);
 app.use('/api/orders', ordersRoute);
 app.use('/api/coupons', couponsRoute);
+
+// Serve static files from the build directory
+app.use(express.static(path.join(__dirname, '../admin/dist')));
+app.use(express.static(path.join(__dirname, '../client/dist')));
+
+// Handle client-side routing - serve index.html for all non-API routes
+app.get('*', (req, res) => {
+    // If the request starts with /api, return 404
+    if (req.url.startsWith('/api')) {
+        return res.status(404).json({
+            success: false,
+            message: 'API endpoint not found'
+        });
+    }
+    
+    // Check if the request is for admin panel
+    if (req.url.startsWith('/admin')) {
+        res.sendFile(path.join(__dirname, '../admin/dist/index.html'));
+    } else {
+        res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+    }
+});
 
 // Enhanced error handling middleware
 app.use((err, req, res, next) => {

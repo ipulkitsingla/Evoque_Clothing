@@ -5,24 +5,23 @@ const mongoose = require("mongoose");
 const cors = require("cors")
 require("dotenv/config")
 
-// More permissive CORS configuration for development
+// Production-ready CORS configuration
 const corsOptions = {
     origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) return callback(null, true);
-        
         const allowedOrigins = [
-            'http://localhost:5173',  // Vite default
-            'http://localhost:3000',  // Alternative development port
-            'http://127.0.0.1:5173', // Local IPv4 for Vite
-            'http://127.0.0.1:3000'  // Local IPv4 alternative
+            'http://localhost:5173',
+            'http://localhost:3000',
+            'http://127.0.0.1:5173',
+            'http://127.0.0.1:3000',
+            'https://evoque-clothing.vercel.app',
+            'https://evoque-clothing-git-main-ipulkitsingla.vercel.app',
+            'https://evoque-clothing-ipulkitsingla.vercel.app'
         ];
         
-        if (allowedOrigins.indexOf(origin) !== -1) {
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
-            console.warn(`Origin ${origin} not allowed by CORS`);
-            callback(null, true); // Allow all origins in development
+            callback(new Error('Not allowed by CORS'));
         }
     },
     credentials: true,

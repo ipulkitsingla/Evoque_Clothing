@@ -81,7 +81,7 @@ const OrderList = () => {
 
   const handleStatusChange = async (orderId, newStatus) => {
     try {
-      await axios.put(
+      await axios.patch(
         `${API_URL}/orders/${orderId}/status`,
         { status: newStatus },
         {
@@ -93,6 +93,7 @@ const OrderList = () => {
       fetchOrders();
     } catch (error) {
       console.error('Error updating order status:', error);
+      setError(error.response?.data?.message || 'Failed to update order status');
     }
   };
 

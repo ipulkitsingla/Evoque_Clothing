@@ -6,6 +6,42 @@ const { corsMiddleware, ensureCorsHeaders } = require("./middleware/cors");
 require("dotenv/config")
 const { ping } = require("./utils/keepAlive");
 
+// MongoDB connection options
+const mongooseOptions = {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    serverSelectionTimeoutMS: 5000, // Timeout after 5 seconds
+    socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+    family: 4 // Use IPv4, skip trying IPv6
+};
+
+// MongoDB connection with retry logic
+const connectWithRetry = async () => {
+    console.log('Attempting to connect to MongoDB...');
+    try {
+        await mongoose.connect(process.env.CONNECTION_STRING, mongooseOptions);
+        console.log("Database Connected Successfully!");
+        
+        // Set up MongoDB connection error handlers
+        mongoose.connection.on('error', (err) => {
+            console.error('MongoDB connection error:', err);
+        });
+
+        mongoose.connection.on('disconnected', () => {
+            console.log('MongoDB disconnected. Attempting to reconnect...');
+            setTimeout(connectWithRetry, 5000);
+        });
+
+        return true;
+    } catch (err) {
+        console.error("Database Connection Failed!");
+        console.error("Error details:", err);
+        console.log('Retrying connection in 5 seconds...');
+        setTimeout(connectWithRetry, 5000);
+        return false;
+    }
+};
+
 // Apply CORS middleware before routes
 app.use(corsMiddleware);
 app.use(ensureCorsHeaders);
@@ -44,7 +80,8 @@ app.get('/api/health', (req, res) => {
         time: new Date().toISOString(),
         uptime: process.uptime(),
         memory: process.memoryUsage(),
-        env: process.env.NODE_ENV
+        env: process.env.NODE_ENV,
+        dbStatus: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
     });
 });
 
@@ -107,40 +144,36 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Connect to MongoDB
-mongoose.connect(process.env.CONNECTION_STRING, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
-.then(() => {
-    console.log("Database Connected Successfully!");
-    const port = process.env.PORT || 3000;
-    const server = app.listen(port, () => {
-        console.log(`Server running at http://localhost:${port}`);
-        console.log('CORS enabled for origins:', corsMiddleware.origin);
-        console.log('Environment:', process.env.NODE_ENV);
-        
-        // Start the keep-alive ping
-        if (process.env.NODE_ENV === 'production') {
-            ping();
-            console.log('Keep-alive ping service started');
-        }
-    });
+// Start server only after successful database connection
+const startServer = async () => {
+    const isConnected = await connectWithRetry();
+    if (isConnected) {
+        const port = process.env.PORT || 3000;
+        const server = app.listen(port, () => {
+            console.log(`Server running at http://localhost:${port}`);
+            console.log('CORS enabled for origins:', corsMiddleware.origin);
+            console.log('Environment:', process.env.NODE_ENV);
+            
+            // Start the keep-alive ping
+            if (process.env.NODE_ENV === 'production') {
+                ping();
+                console.log('Keep-alive ping service started');
+            }
+        });
 
-    // Handle server shutdown gracefully
-    process.on('SIGTERM', () => {
-        console.log('SIGTERM received. Shutting down gracefully...');
-        server.close(() => {
-            console.log('Server closed');
-            mongoose.connection.close(false, () => {
-                console.log('MongoDB connection closed');
-                process.exit(0);
+        // Handle server shutdown gracefully
+        process.on('SIGTERM', () => {
+            console.log('SIGTERM received. Shutting down gracefully...');
+            server.close(() => {
+                console.log('Server closed');
+                mongoose.connection.close(false, () => {
+                    console.log('MongoDB connection closed');
+                    process.exit(0);
+                });
             });
         });
-    });
-})
-.catch((err) => {
-    console.error("Database Connection Failed!");
-    console.error("Error details:", err);
-    process.exit(1);
-});
+    }
+};
+
+// Start the server
+startServer();

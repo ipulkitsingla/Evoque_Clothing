@@ -6,6 +6,23 @@ const adminMiddleware = require('../middleware/admin');
 
 // Admin Routes
 
+// Get all coupons (admin)
+router.get('/admin', [authMiddleware, adminMiddleware], async (req, res) => {
+    try {
+        const coupons = await Coupon.find().sort({ createdAt: -1 });
+        res.json({
+            success: true,
+            coupons
+        });
+    } catch (error) {
+        console.error('Error in GET /admin:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Internal server error'
+        });
+    }
+});
+
 // Get single coupon by ID
 router.get('/:id', [authMiddleware, adminMiddleware], async (req, res) => {
     try {
@@ -21,9 +38,10 @@ router.get('/:id', [authMiddleware, adminMiddleware], async (req, res) => {
             coupon
         });
     } catch (error) {
+        console.error('Error in GET /:id:', error);
         res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || 'Internal server error'
         });
     }
 });
@@ -38,25 +56,10 @@ router.post('/', [authMiddleware, adminMiddleware], async (req, res) => {
             coupon
         });
     } catch (error) {
+        console.error('Error in POST /:', error);
         res.status(400).json({
             success: false,
-            message: error.message
-        });
-    }
-});
-
-// Get all coupons (admin)
-router.get('/admin', [authMiddleware, adminMiddleware], async (req, res) => {
-    try {
-        const coupons = await Coupon.find().sort({ createdAt: -1 });
-        res.json({
-            success: true,
-            coupons
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
+            message: error.message || 'Failed to create coupon'
         });
     }
 });
@@ -80,9 +83,10 @@ router.put('/:id', [authMiddleware, adminMiddleware], async (req, res) => {
             coupon
         });
     } catch (error) {
+        console.error('Error in PUT /:id:', error);
         res.status(400).json({
             success: false,
-            message: error.message
+            message: error.message || 'Failed to update coupon'
         });
     }
 });
@@ -102,9 +106,10 @@ router.delete('/:id', [authMiddleware, adminMiddleware], async (req, res) => {
             message: 'Coupon deleted successfully'
         });
     } catch (error) {
+        console.error('Error in DELETE /:id:', error);
         res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || 'Failed to delete coupon'
         });
     }
 });
@@ -165,9 +170,10 @@ router.post('/validate', authMiddleware, async (req, res) => {
             }
         });
     } catch (error) {
+        console.error('Error in POST /validate:', error);
         res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || 'Failed to validate coupon'
         });
     }
 });
@@ -195,9 +201,10 @@ router.post('/apply', authMiddleware, async (req, res) => {
             message: 'Coupon applied successfully'
         });
     } catch (error) {
+        console.error('Error in POST /apply:', error);
         res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || 'Failed to apply coupon'
         });
     }
 });

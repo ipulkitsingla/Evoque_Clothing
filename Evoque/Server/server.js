@@ -2,42 +2,15 @@ const express = require("express");
 const app = express();
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
-const cors = require("cors")
+const { corsMiddleware, ensureCorsHeaders } = require("./middleware/cors");
 require("dotenv/config")
 
-// Production-ready CORS configuration
-const corsOptions = {
-    origin: function (origin, callback) {
-        const allowedOrigins = [
-            // Development URLs
-            'http://localhost:5173',
-            'http://localhost:3000',
-            'http://127.0.0.1:5173',
-            'http://127.0.0.1:3000',
-            // Production URLs
-            'https://evoque-clothing.vercel.app',
-            'https://evoque-clothing-admin.vercel.app',
-            // Server URL
-            'https://evoque-clothing-server.vercel.app'
-        ];
-        
-        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-            callback(null, true);
-        } else {
-            console.warn(`Origin ${origin} not allowed by CORS`);
-            callback(new Error(`Origin ${origin} not allowed by CORS`));
-        }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept'],
-    exposedHeaders: ['Content-Length', 'Content-Type']
-};
-
-app.use(cors(corsOptions));
+// Apply CORS middleware before routes
+app.use(corsMiddleware);
+app.use(ensureCorsHeaders);
 
 // Handle preflight requests
-app.options('*', cors(corsOptions));
+app.options('*', corsMiddleware);
 
 // Middleware
 app.use(bodyParser.json({limit: '50mb'}));
@@ -50,13 +23,7 @@ app.use((req, res, next) => {
     console.log(`${req.method} ${req.path}`);
     console.log('Headers:', JSON.stringify(req.headers, null, 2));
     console.log('Origin:', req.get('origin'));
-    console.log('Body:', JSON.stringify(req.body, null, 2));
     console.log('----------------------\n');
-
-    // Add CORS headers explicitly
-    res.header('Access-Control-Allow-Origin', req.get('origin') || '*');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    
     next();
 });
 
@@ -143,7 +110,7 @@ mongoose.connect(process.env.CONNECTION_STRING, {
     const port = process.env.PORT || 3000;
     app.listen(port, () => {
         console.log(`Server running at http://localhost:${port}`);
-        console.log('CORS enabled for origins:', corsOptions.origin);
+        console.log('CORS enabled for origins:', corsMiddleware.origin);
     });
 })
 .catch((err) => {

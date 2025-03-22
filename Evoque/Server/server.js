@@ -6,40 +6,67 @@ const { corsMiddleware, ensureCorsHeaders } = require("./middleware/cors");
 require("dotenv/config")
 const { ping } = require("./utils/keepAlive");
 
+// MongoDB Debug
+mongoose.set('debug', true);
+
 // MongoDB connection options
 const mongooseOptions = {
     useNewUrlParser: true,
     useUnifiedTopology: true,
-    serverSelectionTimeoutMS: 5000, // Timeout after 5 seconds
-    socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
-    family: 4 // Use IPv4, skip trying IPv6
+    serverSelectionTimeoutMS: 10000,
+    socketTimeoutMS: 45000,
+    family: 4,
+    maxPoolSize: 10
 };
 
-// MongoDB connection with retry logic
+// MongoDB connection with retry logic and debug logging
 const connectWithRetry = async () => {
-    console.log('Attempting to connect to MongoDB...');
-    try {
-        await mongoose.connect(process.env.CONNECTION_STRING, mongooseOptions);
-        console.log("Database Connected Successfully!");
-        
-        // Set up MongoDB connection error handlers
-        mongoose.connection.on('error', (err) => {
-            console.error('MongoDB connection error:', err);
-        });
+    const maxRetries = 3;
+    let retryCount = 0;
 
-        mongoose.connection.on('disconnected', () => {
-            console.log('MongoDB disconnected. Attempting to reconnect...');
-            setTimeout(connectWithRetry, 5000);
-        });
+    const tryConnect = async () => {
+        try {
+            console.log(`MongoDB connection attempt ${retryCount + 1} of ${maxRetries}`);
+            console.log('Connection string:', process.env.CONNECTION_STRING?.substring(0, 20) + '...');
+            
+            await mongoose.connect(process.env.CONNECTION_STRING, mongooseOptions);
+            
+            console.log("Database Connected Successfully!");
+            console.log('MongoDB Connection State:', mongoose.connection.readyState);
+            console.log('MongoDB Connection Details:', {
+                host: mongoose.connection.host,
+                port: mongoose.connection.port,
+                name: mongoose.connection.name
+            });
 
-        return true;
-    } catch (err) {
-        console.error("Database Connection Failed!");
-        console.error("Error details:", err);
-        console.log('Retrying connection in 5 seconds...');
-        setTimeout(connectWithRetry, 5000);
-        return false;
-    }
+            // Set up MongoDB connection error handlers
+            mongoose.connection.on('error', (err) => {
+                console.error('MongoDB runtime error:', err);
+            });
+
+            mongoose.connection.on('disconnected', () => {
+                console.log('MongoDB disconnected. Attempting to reconnect...');
+                setTimeout(tryConnect, 5000);
+            });
+
+            return true;
+        } catch (err) {
+            console.error("Database Connection Failed!");
+            console.error("Error details:", err);
+            
+            if (retryCount < maxRetries - 1) {
+                retryCount++;
+                console.log(`Retrying connection in 5 seconds... (Attempt ${retryCount + 1} of ${maxRetries})`);
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                return tryConnect();
+            }
+            
+            console.error('Max retries reached. Could not connect to MongoDB.');
+            return false;
+        }
+    };
+
+    return tryConnect();
 };
 
 // Apply CORS middleware before routes
@@ -53,14 +80,16 @@ app.options('*', corsMiddleware);
 app.use(bodyParser.json({limit: '50mb'}));
 app.use(bodyParser.urlencoded({limit: '50mb', extended: true}));
 
-// Enhanced debug middleware
+// Request logging middleware
 app.use((req, res, next) => {
     console.log('\n--- Incoming Request ---');
     console.log(`Time: ${new Date().toISOString()}`);
     console.log(`${req.method} ${req.path}`);
-    console.log('Headers:', JSON.stringify(req.headers, null, 2));
-    console.log('Origin:', req.get('origin'));
-    console.log('----------------------\n');
+    console.log('Headers:', JSON.stringify({
+        authorization: req.headers.authorization ? 'Bearer [REDACTED]' : 'None',
+        origin: req.headers.origin,
+        'content-type': req.headers['content-type']
+    }, null, 2));
     next();
 });
 
@@ -75,48 +104,21 @@ const authMiddleware = require("./middleware/auth");
 
 // Enhanced health check endpoint
 app.get('/api/health', (req, res) => {
+    const dbState = ['disconnected', 'connected', 'connecting', 'disconnecting'];
     res.json({ 
         status: 'ok', 
         time: new Date().toISOString(),
         uptime: process.uptime(),
         memory: process.memoryUsage(),
         env: process.env.NODE_ENV,
-        dbStatus: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+        dbStatus: dbState[mongoose.connection.readyState],
+        dbDetails: {
+            host: mongoose.connection.host,
+            name: mongoose.connection.name,
+            port: mongoose.connection.port,
+            models: Object.keys(mongoose.models)
+        }
     });
-});
-
-// Public routes for GET operations
-app.get('/api/category', async (req, res, next) => {
-    try {
-        const route = categoryRoute.stack.find(r => r.route?.path === '/' && r.route.methods.get);
-        if (route) {
-            await route.route.stack[0].handle(req, res, next);
-        }
-    } catch (error) {
-        next(error);
-    }
-});
-
-app.get('/api/products', async (req, res, next) => {
-    try {
-        const route = productRoute.stack.find(r => r.route?.path === '/' && r.route.methods.get);
-        if (route) {
-            await route.route.stack[0].handle(req, res, next);
-        }
-    } catch (error) {
-        next(error);
-    }
-});
-
-app.get('/api/products/:id', async (req, res, next) => {
-    try {
-        const route = productRoute.stack.find(r => r.route?.path === '/:id' && r.route.methods.get);
-        if (route) {
-            await route.route.stack[0].handle(req, res, next);
-        }
-    } catch (error) {
-        next(error);
-    }
 });
 
 // Protected routes (require authentication)
@@ -132,7 +134,11 @@ app.use((err, req, res, next) => {
     console.error('\n--- Error Occurred ---');
     console.error('Time:', new Date().toISOString());
     console.error('Path:', req.path);
-    console.error('Error:', err);
+    console.error('Error:', {
+        name: err.name,
+        message: err.message,
+        code: err.code
+    });
     console.error('Stack:', err.stack);
     console.error('--------------------\n');
 
@@ -172,8 +178,16 @@ const startServer = async () => {
                 });
             });
         });
+
+        return server;
+    } else {
+        console.error('Could not start server due to database connection failure');
+        process.exit(1);
     }
 };
 
 // Start the server
-startServer();
+startServer().catch(err => {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+});

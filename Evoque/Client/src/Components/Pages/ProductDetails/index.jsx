@@ -7,6 +7,7 @@ import QuanityBox from "../../QuantityBox";
 import { Button, Divider, Alert, Snackbar, TextField } from "@mui/material";
 import Footer from "../../Footer";
 import Header from "../../Header";
+import { API_URL } from '../../../config/api';
 
 const ProductDetails = () => {
     const { id } = useParams();
@@ -37,7 +38,7 @@ const ProductDetails = () => {
 
     const fetchProduct = async () => {
         try {
-            const response = await axios.get(`http://localhost:3000/api/products/${id}`);
+            const response = await axios.get(`${API_URL}/products/${id}`);
             setProduct(response.data);
         } catch (error) {
             console.error('Error fetching product:', error);
@@ -137,7 +138,7 @@ const ProductDetails = () => {
         try {
             const token = localStorage.getItem('userToken');
             const response = await axios.post(
-                `http://localhost:3000/api/products/${id}/review`, 
+                `${API_URL}/products/${id}/review`, 
                 {
                     name: reviewerName.trim(),
                     rating: userRating,
@@ -151,16 +152,11 @@ const ProductDetails = () => {
             );
 
             if (response.data) {
-                // Update product with new review
-                await fetchProduct(); // Fetch updated product data
-                
-                // Reset form
+                await fetchProduct();
                 setUserRating(0);
                 setReviewerName("");
                 setReviewText("");
                 setError("");
-
-                // Show success message
                 setSnackbarMessage("Review submitted successfully");
                 setSnackbarOpen(true);
             }
@@ -168,7 +164,7 @@ const ProductDetails = () => {
             console.error('Error submitting review:', error);
             if (error.response?.status === 401) {
                 setError("Please login to submit a review");
-                navigate('/signin'); // Redirect to login page
+                navigate('/signin');
             } else if (error.response?.data?.message) {
                 setError(error.response.data.message);
             } else {

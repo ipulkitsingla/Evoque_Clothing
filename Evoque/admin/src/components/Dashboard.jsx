@@ -148,7 +148,7 @@ const Dashboard = () => {
 
   const handleDelete = async (id) => {
     try {
-      const response = await axios.delete(`http://localhost:3000/api/products/${id}`, {
+      const response = await axios.delete(`${API_URL}/products/${id}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('adminToken')}`,
         },

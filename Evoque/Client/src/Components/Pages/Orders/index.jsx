@@ -4,6 +4,7 @@ import { CircularProgress, Paper, Typography, Chip } from '@mui/material';
 import Header from '../../Header';
 import Footer from '../../Footer';
 import './styles.css';
+import { API_URL } from '../../../config/api';
 
 const Orders = () => {
     const [orders, setOrders] = useState([]);
@@ -17,7 +18,7 @@ const Orders = () => {
 
     const fetchOrders = async () => {
         try {
-            const response = await fetch('http://localhost:3000/api/orders/my-orders', {
+            const response = await fetch(`${API_URL}/orders/my-orders`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }

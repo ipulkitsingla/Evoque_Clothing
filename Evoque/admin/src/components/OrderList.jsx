@@ -24,6 +24,7 @@ import {
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import axios from 'axios';
+import { API_URL } from '../config/api';
 
 const orderStatuses = [
   { value: 'Pending', color: 'warning' },
@@ -50,7 +51,7 @@ const OrderList = () => {
     try {
       setLoading(true);
       setError('');
-      const response = await axios.get('http://localhost:3000/api/orders', {
+      const response = await axios.get(`${API_URL}/orders`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('adminToken')}`
         }
@@ -80,9 +81,8 @@ const OrderList = () => {
 
   const handleStatusChange = async (orderId, newStatus) => {
     try {
-      setError('');
-      const response = await axios.patch(
-        `http://localhost:3000/api/orders/${orderId}/status`,
+      await axios.put(
+        `${API_URL}/orders/${orderId}/status`,
         { status: newStatus },
         {
           headers: {
@@ -90,14 +90,9 @@ const OrderList = () => {
           }
         }
       );
-
-      if (response.data.success) {
-        fetchOrders(); // Refresh orders after status update
-      } else {
-        setError(response.data.message || 'Failed to update order status');
-      }
+      fetchOrders();
     } catch (error) {
-      setError(error.response?.data?.message || 'Error updating order status');
+      console.error('Error updating order status:', error);
     }
   };
 

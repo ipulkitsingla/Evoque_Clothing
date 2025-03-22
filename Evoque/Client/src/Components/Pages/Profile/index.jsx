@@ -34,6 +34,7 @@ import {
 import Header from '../../Header';
 import Footer from '../../Footer';
 import api from '../../../services/api';
+import { API_URL } from '../../../config/api';
 import './styles.css';
 
 const orderStatuses = {
@@ -172,7 +173,7 @@ const Profile = () => {
         formDataToSend.append('avatar', avatarFile);
       }
 
-      const response = await fetch('http://localhost:3000/api/user/profile', {
+      const response = await fetch(`${API_URL}/user/profile`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`

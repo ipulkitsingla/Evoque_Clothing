@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, TextField, Button, Typography, Container, Paper } from '@mui/material';
 import axios from 'axios';
+import { API_URL } from '../config/api';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -27,13 +28,18 @@ const Register = () => {
     }
 
     try {
-      const response = await axios.post('http://localhost:3000/api/auth/register', {
+      const response = await axios.post(`${API_URL}/auth/register`, {
         email: formData.email,
         password: formData.password,
+        fullName: '',
+        isAdmin: true
       });
 
-      if (response.data.success) {
-        navigate('/login');
+      if (response.data.token) {
+        localStorage.setItem('adminToken', response.data.token);
+        navigate('/dashboard');
+      } else {
+        setError('Invalid response from server');
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');

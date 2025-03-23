@@ -12,7 +12,14 @@ import {
     DialogActions,
     TextField,
     Alert, 
-    Snackbar 
+    Snackbar,
+    Radio,
+    RadioGroup,
+    FormControlLabel,
+    FormControl,
+    FormLabel,
+    Box,
+    Typography
 } from "@mui/material";
 import Header from "../../Header";
 import Footer from "../../Footer";
@@ -27,6 +34,8 @@ const Cart = () => {
     const [orderSuccess, setOrderSuccess] = useState(false);
     const [error, setError] = useState('');
     const [showQuickOrderForm, setShowQuickOrderForm] = useState(false);
+    const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState('COD');
     const [quickOrderDetails, setQuickOrderDetails] = useState({
         email: '',
         phone: '',
@@ -226,11 +235,15 @@ const Cart = () => {
         }
     };
 
-    const handleQuickOrderSubmit = async () => {
+    const handleQuickOrderSubmit = () => {
         if (!validateForm()) {
             return;
         }
+        setShowQuickOrderForm(false);
+        setShowPaymentDialog(true);
+    };
 
+    const handlePaymentSubmit = async () => {
         setLoading(true);
         setError('');
 
@@ -251,7 +264,6 @@ const Cart = () => {
                 console.error('Token not found in localStorage');
                 throw new Error('Authentication token not found. Please sign in again.');
             }
-            console.log('Using token:', token.substring(0, 10) + '...');
 
             // Create order payload
             const orderPayload = {
@@ -264,7 +276,7 @@ const Cart = () => {
                         quantity: item.quantity,
                         originalPrice: item.price,
                         price: discountedPrice,
-                        size: item.size || 'M'  // Provide default size if not specified
+                        size: item.size || 'M'
                     };
                 }),
                 subtotal: subtotal,
@@ -275,7 +287,7 @@ const Cart = () => {
                     amount: appliedCoupon.calculatedDiscount
                 } : null,
                 totalAmount: calculateFinalTotal(),
-                paymentMethod: 'COD',
+                paymentMethod: paymentMethod,
                 shippingAddress: {
                     fullName: user.fullName || 'Guest',
                     addressLine1: quickOrderDetails.address.trim()
@@ -287,73 +299,48 @@ const Cart = () => {
                 }
             };
 
-            console.log('Submitting order with payload:', orderPayload);
-
             // Place order
-            let response;
-            try {
-                const response = await fetch(`${API_URL}/orders`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`,
-                    },
-                    body: JSON.stringify(orderPayload)
-                });
+            const response = await fetch(`${API_URL}/orders`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify(orderPayload)
+            });
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Failed to place order');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to place order');
+            }
+
+            const data = await response.json();
+            
+            if (data.success) {
+                // Send confirmation email
+                try {
+                    await sendOrderConfirmationEmail();
+                } catch (emailErr) {
+                    console.error('Email sending failed:', emailErr);
                 }
 
-                const data = await response.json();
+                // Clear cart
+                const allCarts = JSON.parse(localStorage.getItem('userCarts')) || {};
+                allCarts[user.email] = [];
+                localStorage.setItem('userCarts', JSON.stringify(allCarts));
+                localStorage.setItem(`cartTotal_${user.email}`, 0);
+                setCartItems([]);
+                window.dispatchEvent(new CustomEvent('cartUpdated'));
+
+                setShowPaymentDialog(false);
+                setOrderSuccess(true);
                 
-                if (data.success) {
-                    // Send confirmation email and wait for result
-                    let emailError = null;
-                    try {
-                        await sendOrderConfirmationEmail();
-                    } catch (emailErr) {
-                        emailError = emailErr;
-                        console.error('Email sending failed:', emailErr);
-                    }
-
-                    // Clear cart immediately
-                    const allCarts = JSON.parse(localStorage.getItem('userCarts')) || {};
-                    allCarts[user.email] = [];
-                    localStorage.setItem('userCarts', JSON.stringify(allCarts));
-                    localStorage.setItem(`cartTotal_${user.email}`, 0);
-                    setCartItems([]); // Update state immediately
-                    window.dispatchEvent(new CustomEvent('cartUpdated'));
-
-                    setShowQuickOrderForm(false);
-                    setOrderSuccess(true);
-                    
-                    // Add delay to show success message and any email errors
-                    setTimeout(() => {
-                        setOrderSuccess(false);
-                        if (emailError) {
-                            setError('Order placed successfully but email notification failed. Please check your email address.');
-                            // Add extra delay if there was an email error
-                            setTimeout(() => {
-                                window.location.href = '/orders';
-                            }, 3000);
-                        } else {
-                            window.location.href = '/orders';
-                        }
-                    }, 2000);
-                } else {
-                    throw new Error(data.message || 'Failed to place order');
-                }
-            } catch (error) {
-                console.error('Order placement error:', error);
-                setError(error.message || 'Failed to place order. Please try again.');
-                
-                if (error.message.includes('session has expired')) {
-                    setTimeout(() => {
-                        navigate('/signin');
-                    }, 2000);
-                }
+                setTimeout(() => {
+                    setOrderSuccess(false);
+                    window.location.href = '/orders';
+                }, 2000);
+            } else {
+                throw new Error(data.message || 'Failed to place order');
             }
         } catch (error) {
             console.error('Order placement error:', error);
@@ -635,7 +622,7 @@ const Cart = () => {
                 maxWidth="sm"
                 fullWidth
             >
-                <DialogTitle>Quick Order Details</DialogTitle>
+                <DialogTitle>Delivery Details</DialogTitle>
                 <DialogContent>
                     <div className="quick-order-form">
                         <TextField
@@ -690,6 +677,81 @@ const Cart = () => {
                     </Button>
                     <Button 
                         onClick={handleQuickOrderSubmit}
+                        variant="contained" 
+                        color="primary"
+                        disabled={loading}
+                    >
+                        Continue to Payment
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Payment Method Dialog */}
+            <Dialog
+                open={showPaymentDialog}
+                onClose={() => !loading && setShowPaymentDialog(false)}
+                maxWidth="sm"
+                fullWidth
+            >
+                <DialogTitle>Payment Method</DialogTitle>
+                <DialogContent>
+                    <Box sx={{ p: 2 }}>
+                        <FormControl component="fieldset">
+                            <FormLabel component="legend">Select Payment Method</FormLabel>
+                            <RadioGroup
+                                value={paymentMethod}
+                                onChange={(e) => setPaymentMethod(e.target.value)}
+                            >
+                                <FormControlLabel 
+                                    value="COD" 
+                                    control={<Radio />} 
+                                    label={
+                                        <Box>
+                                            <Typography variant="subtitle1">Cash on Delivery (COD)</Typography>
+                                            <Typography variant="body2" color="text.secondary">
+                                                Pay when your order is delivered
+                                            </Typography>
+                                        </Box>
+                                    }
+                                />
+                            </RadioGroup>
+                        </FormControl>
+
+                        <Box sx={{ mt: 3 }}>
+                            <Typography variant="h6" gutterBottom>Order Summary</Typography>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                <Typography>Subtotal:</Typography>
+                                <Typography>₹{subtotal.toLocaleString()}</Typography>
+                            </Box>
+                            {appliedCoupon && (
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, color: 'success.main' }}>
+                                    <Typography>Discount:</Typography>
+                                    <Typography>-₹{appliedCoupon.calculatedDiscount.toLocaleString()}</Typography>
+                                </Box>
+                            )}
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                <Typography>Shipping:</Typography>
+                                <Typography>Free</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2, borderTop: '1px solid #eee', pt: 2 }}>
+                                <Typography variant="h6">Total:</Typography>
+                                <Typography variant="h6">₹{calculateFinalTotal().toLocaleString()}</Typography>
+                            </Box>
+                        </Box>
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button 
+                        onClick={() => {
+                            setShowPaymentDialog(false);
+                            setShowQuickOrderForm(true);
+                        }} 
+                        disabled={loading}
+                    >
+                        Back
+                    </Button>
+                    <Button 
+                        onClick={handlePaymentSubmit}
                         variant="contained" 
                         color="primary"
                         disabled={loading}

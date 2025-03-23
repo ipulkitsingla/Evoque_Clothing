@@ -29,12 +29,9 @@
     min-width: 40px;
     height: 40px;
     color: black;
-    background-color: #ffffff;
+    background-color: transparent;
 }
 
-.header-search button:hover {
-    background-color: #333;
-}
 
 .search-results-dropdown {
     position: absolute;

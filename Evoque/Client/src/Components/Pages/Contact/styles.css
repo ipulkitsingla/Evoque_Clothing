@@ -1,0 +1,23 @@
+/* Contact page styles */
+.MuiContainer-root {
+    min-height: calc(100vh - 200px); /* Adjust based on your header/footer height */
+}
+
+.MuiPaper-root {
+    background-color: #ffffff;
+    transition: box-shadow 0.3s ease;
+}
+
+.MuiPaper-root:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.MuiButton-contained {
+    background-color: #e08e37;
+    color: white;
+    transition: background-color 0.3s ease;
+}
+
+.MuiButton-contained:hover {
+    background-color: #c47a2d;
+} 
